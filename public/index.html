@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CS2 Case Price Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header>
+        <nav>
+            <div class="nav-left">
+                <a href="/" class="logo">CS2 Case Tracker</a>
+            </div>
+            <div class="nav-right">
+                <select id="currency">
+                    <option value="USD">$ USD</option>
+                </select>
+            </div>
+        </nav>
+    </header>
+
+    <main>
+        <div class="filters">
+            <div class="search-box">
+                <input type="text" id="search" placeholder="Search cases...">
+            </div>
+            <div class="sort-options">
+                <select id="sort">
+                    <option value="name">Name</option>
+                    <option value="price">Price</option>
+                </select>
+            </div>
+        </div>
+
+        <div class="cases-grid">
+            <!-- Cases will be populated by JS -->
+        </div>
+    </main>
+
+    <script src="/script.js"></script>
+</body>
+
+</html>
