@@ -110,12 +110,15 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+let lastUpdated = null;
+
 async function fetchAndStorePrices() {
   const result = {};
   let caseCount = 0;
   const now = new Date();
 
   for (const caseName of cases) {
+    if (caseName === "Consumer Grade Container") continue; // Skip this case
     let attempts = 0;
     let priceFetched = false;
 
@@ -159,6 +162,7 @@ async function fetchAndStorePrices() {
   }
 
   await savePrices(result);
+  lastUpdated = new Date().toISOString(); // Set after all prices are saved
   console.log("\n✨ Successfully completed fetching all case prices!");
   console.log(`📊 Total cases processed: ${caseCount}`);
 }
@@ -190,6 +194,11 @@ app.get('/api/prices-history', async (req, res) => {
             details: error.message
         });
     }
+});
+
+// API endpoint to get last updated timestamp
+app.get('/api/last-updated', (req, res) => {
+  res.json({ lastUpdated });
 });
 
 // Serve static files from the public directory
