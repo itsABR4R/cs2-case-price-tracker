@@ -43,9 +43,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const caseInfo = casesData.find(c => c.name === name);
                     const history = historyData[name] || [];
                     const now = new Date();
-                    // Find the latest price (current)
+                    // Find the latest price (current) from pricesData
                     const currentPrice = info.price;
-                    // Find the price from (or closest to) 24 hours ago
+                    // Find the price from (or closest to) 24 hours ago from historyData
                     const targetTime = now.getTime() - 24 * 60 * 60 * 1000;
                     let price24hAgo = null;
                     let minDiff = Infinity;
@@ -63,7 +63,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     }
                     return {
                         name,
-                        price: currentPrice,
+                        price: currentPrice, // Always use info.price from pricesData
                         price24hAgo,
                         priceChange,
                         timestamp: info.timestamp,
