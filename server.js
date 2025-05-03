@@ -2,6 +2,8 @@ const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
 const { Pool } = require('pg');
+const axios = require('axios');
+const cases = require('./cases.json');
 const app = express();
 const port = process.env.PORT || 3000;
 
@@ -97,25 +99,70 @@ async function getPriceHistory() {
     }, {});
 }
 
-// Function to update prices
-async function updatePrices() {
-    try {
-        const pricesPath = path.join(__dirname, 'prices.json');
-        const pricesData = await fs.readFile(pricesPath, 'utf8');
-        const prices = JSON.parse(pricesData);
-        
-        // Save prices to database
-        await savePrices(prices);
-        
-        // Get current prices from database
-        const currentPrices = await getCurrentPrices();
-        
-        return currentPrices;
-    } catch (error) {
-        console.error('Error updating prices:', error);
-        throw error;
-    }
+// --- Integrated fetchPrices logic ---
+const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
+const INITIAL_SLEEP_MS = 1000; // 1 second delay per request
+const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
+const CASES_BEFORE_TIMEOUT = 20; // Number of cases before taking a break
+const TIMEOUT_DURATION_MS = 30000; // 30 seconds timeout
+
+function sleep(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+async function fetchAndStorePrices() {
+  const result = {};
+  let caseCount = 0;
+  const now = new Date();
+
+  for (const caseName of cases) {
+    let attempts = 0;
+    let priceFetched = false;
+
+    // Check if we need to take a timeout
+    if (caseCount > 0 && caseCount % CASES_BEFORE_TIMEOUT === 0) {
+      console.log(`\n⏳ Taking a ${TIMEOUT_DURATION_MS/1000} second break after ${caseCount} cases...\n`);
+      await sleep(TIMEOUT_DURATION_MS);
+    }
+
+    while (attempts < MAX_RETRIES && !priceFetched) {
+      const url = API_URL + encodeURIComponent(caseName);
+      try {
+        const res = await axios.get(url);
+        const priceStr = res.data.lowest_price || "$0.00";
+        const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+        result[caseName] = {
+          price: price,
+          timestamp: now.toISOString()
+        };
+        console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
+        priceFetched = true;
+        caseCount++;
+      } catch (e) {
+        if (e.response && e.response.status === 429) {
+          attempts++;
+          const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS; // Exponential backoff
+          console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
+          await sleep(backoffTime); // Wait before retrying
+        } else {
+          console.error(`Failed to fetch ${caseName}:`, e.message);
+          break; // Stop retrying for other types of errors
+        }
+      }
+    }
+
+    if (!priceFetched) {
+      console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
+    }
+
+    await sleep(INITIAL_SLEEP_MS); // Delay between successful requests
+  }
+
+  await savePrices(result);
+  console.log("\n✨ Successfully completed fetching all case prices!");
+  console.log(`📊 Total cases processed: ${caseCount}`);
+}
+// --- End fetchPrices logic ---
 
 // API endpoint to get cases with previous prices
 app.get('/api/cases', async (req, res) => {
@@ -160,16 +207,10 @@ app.listen(port, async () => {
     // Initialize database
     await initializeDatabase();
     
-    // Initial price update
-    updatePrices().catch(error => {
-        console.error('Initial price update failed:', error);
-    });
+    // Initial price fetch and store
+    await fetchAndStorePrices();
     
     // Set up automatic price updates every 10 minutes
     const TEN_MINUTES = 10 * 60 * 1000;
-    setInterval(() => {
-        updatePrices().catch(error => {
-            console.error('Scheduled price update failed:', error);
-        });
-    }, TEN_MINUTES);
+    setInterval(fetchAndStorePrices, TEN_MINUTES);
 });
