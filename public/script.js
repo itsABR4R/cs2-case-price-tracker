@@ -203,8 +203,5 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Set up automatic updates every 3 minutes
-    const THREE_MINUTES = 3 * 60 * 1000; // 3 minutes in milliseconds
-    setInterval(fetchAndUpdateCases, THREE_MINUTES);
 });
   

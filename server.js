@@ -206,6 +206,13 @@ app.get('/health', (req, res) => {
     res.status(200).send('OK');
 });
 
+async function startPriceFetchLoop() {
+    while (true) {
+        await fetchAndStorePrices();
+        await sleep(3 * 60 * 1000); // 3 minutes
+    }
+}
+
 // Start the server
 server.listen(port, async () => {
     console.log(`Server running on port ${port}`);
@@ -217,6 +224,5 @@ server.listen(port, async () => {
     await fetchAndStorePrices();
     
     // Set up automatic price updates every 3 minutes
-    const THREE_MINUTES = 3 * 60 * 1000;
-    setInterval(fetchAndStorePrices, THREE_MINUTES);
+    startPriceFetchLoop();
 });
