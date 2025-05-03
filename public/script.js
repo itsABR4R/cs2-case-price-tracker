@@ -1,5 +1,6 @@
 document.addEventListener("DOMContentLoaded", async () => {
     let casesArray = []; // Store cases data globally
+    let previousTimestamp = null;
 
     // Add last updated timestamp element
     const main = document.querySelector('main');
@@ -10,6 +11,25 @@ document.addEventListener("DOMContentLoaded", async () => {
         lastUpdatedElem.style.textAlign = 'center';
         lastUpdatedElem.style.margin = '10px 0';
         main.insertBefore(lastUpdatedElem, main.firstChild);
+    }
+
+    function showReloadPrompt() {
+        if (!document.getElementById('reload-banner')) {
+            const banner = document.createElement('div');
+            banner.id = 'reload-banner';
+            banner.style.position = 'fixed';
+            banner.style.top = '0';
+            banner.style.left = '0';
+            banner.style.width = '100%';
+            banner.style.background = '#222';
+            banner.style.color = '#fff';
+            banner.style.textAlign = 'center';
+            banner.style.padding = '1em';
+            banner.style.zIndex = '9999';
+            banner.innerHTML = 'Prices have just been updated. <button id="reload-btn" style="margin-left:1em;padding:0.5em 1em;">Reload for current prices</button>';
+            document.body.appendChild(banner);
+            document.getElementById('reload-btn').onclick = () => location.reload();
+        }
     }
 
     async function fetchAndUpdateCases() {
@@ -63,6 +83,11 @@ document.addEventListener("DOMContentLoaded", async () => {
             if (latestTimestamp) {
                 const date = new Date(latestTimestamp);
                 lastUpdatedElem.textContent = `Last updated: ${date.toLocaleString()}`;
+                // If the timestamp has changed (prices just updated), show reload prompt
+                if (previousTimestamp && latestTimestamp !== previousTimestamp) {
+                    showReloadPrompt();
+                }
+                previousTimestamp = latestTimestamp;
             } else {
                 lastUpdatedElem.textContent = '';
             }
