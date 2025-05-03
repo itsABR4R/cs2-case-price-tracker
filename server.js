@@ -12,7 +12,7 @@ const PREVIOUS_PRICES_FILE = path.join(__dirname, 'previous_prices.json');
 
 // Function to read previous prices
 async function readPreviousPrices() {
-    try {
+  try {
         const data = await fs.readFile(PREVIOUS_PRICES_FILE, 'utf8');
         return JSON.parse(data);
     } catch (error) {
@@ -82,7 +82,7 @@ app.get('/api/prices-history', async (req, res) => {
             error: 'Failed to fetch price history',
             details: error.message
         });
-    }
+  }
 });
 
 // Health check endpoint for Railway
