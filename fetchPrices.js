@@ -1,33 +1,25 @@
-const fs = require("fs");
 const axios = require("axios");
 const cases = require("./cases.json");
+const { Pool } = require("pg");
 
 const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
 const INITIAL_SLEEP_MS = 1000; // 1 second delay per request
 const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
 const CASES_BEFORE_TIMEOUT = 20; // Number of cases before taking a break
 const TIMEOUT_DURATION_MS = 30000; // 30 seconds timeout
-const HISTORY_FILE = "prices_history.json";
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-function loadHistory() {
-  if (fs.existsSync(HISTORY_FILE)) {
-    return JSON.parse(fs.readFileSync(HISTORY_FILE, "utf-8"));
-  }
-  return {};
-}
-
-function saveHistory(history) {
-  fs.writeFileSync(HISTORY_FILE, JSON.stringify(history, null, 2));
-}
-
 async function fetchPrices() {
   const result = {};
   let caseCount = 0;
-  const history = loadHistory();
   const now = new Date();
 
   for (const caseName of cases) {
@@ -50,9 +42,6 @@ async function fetchPrices() {
           price: price,
           timestamp: now.toISOString()
         };
-        // Append to history
-        if (!history[caseName]) history[caseName] = [];
-        history[caseName].push({ price, timestamp: now.toISOString() });
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;
@@ -76,11 +65,31 @@ async function fetchPrices() {
     await sleep(INITIAL_SLEEP_MS); // Delay between successful requests
   }
 
-  fs.writeFileSync("prices.json", JSON.stringify(result, null, 2));
-  saveHistory(history);
-  console.log("\n✨ Successfully completed fetching all case prices!");
-  console.log(`📊 Total cases processed: ${caseCount}`);
-  console.log("💾 Prices saved to prices.json and prices_history.json");
+  // Save to PostgreSQL
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    // Clear current prices
+    await client.query('DELETE FROM prices');
+    for (const [name, info] of Object.entries(result)) {
+      await client.query(
+        'INSERT INTO prices (case_name, price, timestamp) VALUES ($1, $2, $3)',
+        [name, info.price, new Date(info.timestamp)]
+      );
+      await client.query(
+        'INSERT INTO price_history (case_name, price, timestamp) VALUES ($1, $2, $3)',
+        [name, info.price, new Date(info.timestamp)]
+      );
+    }
+    await client.query('COMMIT');
+    console.log("\n✨ Successfully completed fetching and saving all case prices to PostgreSQL!");
+    console.log(`📊 Total cases processed: ${caseCount}`);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('Error saving prices to PostgreSQL:', err);
+  } finally {
+    client.release();
+  }
 }
 
 fetchPrices();
