@@ -4,7 +4,11 @@ const path = require('path');
 const { Pool } = require('pg');
 const axios = require('axios');
 const cases = require('./cases.json');
+const http = require('http');
+const { Server } = require('socket.io');
 const app = express();
+const server = http.createServer(app);
+const io = new Server(server);
 const port = process.env.PORT || 3000;
 
 // PostgreSQL connection configuration
@@ -160,6 +164,7 @@ async function fetchAndStorePrices() {
   }
 
   await savePrices(result);
+  io.emit('prices-updated', { timestamp: new Date().toISOString() });
   console.log("\n✨ Successfully completed fetching all case prices!");
   console.log(`📊 Total cases processed: ${caseCount}`);
 }
@@ -202,7 +207,7 @@ app.get('/health', (req, res) => {
 });
 
 // Start the server
-app.listen(port, async () => {
+server.listen(port, async () => {
     console.log(`Server running on port ${port}`);
     
     // Initialize database
