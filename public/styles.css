@@ -136,28 +136,28 @@ select {
     font-size: 0.8rem;
     color: #888;
     text-decoration: line-through;
-}
-
-h1 {
+  }
+  
+  h1 {
     text-align: center;
-}
-
-table {
+  }
+  
+  table {
     width: 100%;
     border-collapse: collapse;
     margin-top: 20px;
-}
-
-table, th, td {
+  }
+  
+  table, th, td {
     border: 1px solid #ddd;
-}
-
-th, td {
+  }
+  
+  th, td {
     padding: 8px;
     text-align: center;
-}
-
-th {
+  }
+  
+  th {
     background-color: #f4f4f4;
-}
+  }
   

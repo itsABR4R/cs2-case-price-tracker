@@ -2,5 +2,4 @@ node_modules/
 .env
 *.log
 .DS_Store
-previous_prices.json
-prices_history.json 
+previous_prices.json 
