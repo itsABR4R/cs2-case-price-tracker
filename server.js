@@ -1,29 +1,100 @@
 const express = require('express');
 const fs = require('fs').promises;
 const path = require('path');
+const { Pool } = require('pg');
 const app = express();
 const port = process.env.PORT || 3000;
 
-// Serve static files from the public directory
-app.use(express.static('public'));
+// PostgreSQL connection configuration
+const pool = new Pool({
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // Required for Railway
+    }
+});
 
-// Store previous prices in a file
-const PREVIOUS_PRICES_FILE = path.join(__dirname, 'previous_prices.json');
-
-// Function to read previous prices
-async function readPreviousPrices() {
-  try {
-        const data = await fs.readFile(PREVIOUS_PRICES_FILE, 'utf8');
-        return JSON.parse(data);
+// Initialize database tables
+async function initializeDatabase() {
+    try {
+        await pool.query(`
+            CREATE TABLE IF NOT EXISTS prices (
+                id SERIAL PRIMARY KEY,
+                case_name VARCHAR(255) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+            
+            CREATE TABLE IF NOT EXISTS price_history (
+                id SERIAL PRIMARY KEY,
+                case_name VARCHAR(255) NOT NULL,
+                price DECIMAL(10,2) NOT NULL,
+                timestamp TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        console.log('Database tables initialized');
     } catch (error) {
-        // If file doesn't exist or is invalid, return empty object
-        return {};
+        console.error('Error initializing database:', error);
+        throw error;
     }
 }
 
-// Function to save previous prices
-async function savePreviousPrices(prices) {
-    await fs.writeFile(PREVIOUS_PRICES_FILE, JSON.stringify(prices, null, 2));
+// Function to save current prices
+async function savePrices(prices) {
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        
+        // Clear current prices
+        await client.query('DELETE FROM prices');
+        
+        // Insert new prices
+        for (const [name, info] of Object.entries(prices)) {
+            await client.query(
+                'INSERT INTO prices (case_name, price, timestamp) VALUES ($1, $2, $3)',
+                [name, info.price, new Date(info.timestamp)]
+            );
+            
+            // Also save to price history
+            await client.query(
+                'INSERT INTO price_history (case_name, price, timestamp) VALUES ($1, $2, $3)',
+                [name, info.price, new Date(info.timestamp)]
+            );
+        }
+        
+        await client.query('COMMIT');
+    } catch (error) {
+        await client.query('ROLLBACK');
+        throw error;
+    } finally {
+        client.release();
+    }
+}
+
+// Function to get current prices
+async function getCurrentPrices() {
+    const result = await pool.query('SELECT * FROM prices ORDER BY timestamp DESC');
+    return result.rows.reduce((acc, row) => {
+        acc[row.case_name] = {
+            price: parseFloat(row.price),
+            timestamp: row.timestamp.toISOString()
+        };
+        return acc;
+    }, {});
+}
+
+// Function to get price history
+async function getPriceHistory() {
+    const result = await pool.query('SELECT * FROM price_history ORDER BY timestamp DESC');
+    return result.rows.reduce((acc, row) => {
+        if (!acc[row.case_name]) {
+            acc[row.case_name] = [];
+        }
+        acc[row.case_name].push({
+            price: parseFloat(row.price),
+            timestamp: row.timestamp.toISOString()
+        });
+        return acc;
+    }, {});
 }
 
 // Function to update prices
@@ -33,22 +104,13 @@ async function updatePrices() {
         const pricesData = await fs.readFile(pricesPath, 'utf8');
         const prices = JSON.parse(pricesData);
         
-        // Read previous prices
-        const previousPrices = await readPreviousPrices();
+        // Save prices to database
+        await savePrices(prices);
         
-        // Save current prices as previous prices
-        await savePreviousPrices(prices);
+        // Get current prices from database
+        const currentPrices = await getCurrentPrices();
         
-        // Add previous prices to the response
-        const response = Object.entries(prices).reduce((acc, [name, info]) => {
-            acc[name] = {
-                ...info,
-                previousPrice: previousPrices[name]?.price || null
-            };
-            return acc;
-        }, {});
-        
-        return response;
+        return currentPrices;
     } catch (error) {
         console.error('Error updating prices:', error);
         throw error;
@@ -58,7 +120,7 @@ async function updatePrices() {
 // API endpoint to get cases with previous prices
 app.get('/api/cases', async (req, res) => {
     try {
-        const prices = await updatePrices();
+        const prices = await getCurrentPrices();
         res.json(prices);
     } catch (error) {
         console.error('Error fetching cases:', error);
@@ -69,12 +131,10 @@ app.get('/api/cases', async (req, res) => {
     }
 });
 
-// New endpoint to get full price history
+// API endpoint to get price history
 app.get('/api/prices-history', async (req, res) => {
     try {
-        const historyPath = path.join(__dirname, 'prices_history.json');
-        const historyData = await fs.readFile(historyPath, 'utf8');
-        const history = JSON.parse(historyData);
+        const history = await getPriceHistory();
         res.json(history);
     } catch (error) {
         console.error('Error fetching price history:', error);
@@ -82,8 +142,11 @@ app.get('/api/prices-history', async (req, res) => {
             error: 'Failed to fetch price history',
             details: error.message
         });
-  }
+    }
 });
+
+// Serve static files from the public directory
+app.use(express.static('public'));
 
 // Health check endpoint for Railway
 app.get('/health', (req, res) => {
@@ -91,8 +154,11 @@ app.get('/health', (req, res) => {
 });
 
 // Start the server
-app.listen(port, () => {
+app.listen(port, async () => {
     console.log(`Server running on port ${port}`);
+    
+    // Initialize database
+    await initializeDatabase();
     
     // Initial price update
     updatePrices().catch(error => {

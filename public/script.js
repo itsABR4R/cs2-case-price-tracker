@@ -2,19 +2,19 @@ document.addEventListener("DOMContentLoaded", async () => {
     let casesArray = []; // Store cases data globally
 
     async function fetchAndUpdateCases() {
-        try {
-            console.log("Fetching cases from API...");
+    try {
+        console.log("Fetching cases from API...");
             const [pricesResponse, casesResponse, historyResponse] = await Promise.all([
                 fetch("/api/cases"),
                 fetch("https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/crates.json"),
                 fetch("/api/prices-history")
             ]);
-
+        
             if (!pricesResponse.ok) {
                 const errorData = await pricesResponse.json();
-                throw new Error(`Server error: ${errorData.error}${errorData.details ? ` - ${errorData.details}` : ''}`);
-            }
-
+            throw new Error(`Server error: ${errorData.error}${errorData.details ? ` - ${errorData.details}` : ''}`);
+        }
+        
             if (!casesResponse.ok) {
                 throw new Error("Failed to fetch case data from CSGO-API");
             }
@@ -27,14 +27,14 @@ document.addEventListener("DOMContentLoaded", async () => {
             const casesData = await casesResponse.json();
             const historyData = await historyResponse.json();
             console.log("Received data:", pricesData);
-
+      
             const casesGrid = document.querySelector(".cases-grid");
             casesGrid.innerHTML = ''; // Clear loading message
-
+      
             if (!pricesData || Object.keys(pricesData).length === 0) {
-                throw new Error("No case data received");
-            }
-
+            throw new Error("No case data received");
+        }
+      
             // Convert data to array and sort by name, excluding Consumer Grade Container
             casesArray = Object.entries(pricesData)
                 .filter(([name]) => name !== "Consumer Grade Container")
@@ -77,8 +77,8 @@ document.addEventListener("DOMContentLoaded", async () => {
             // Render the cases
             renderCases(casesArray);
 
-        } catch (error) {
-            console.error("Failed to fetch case data:", error);
+    } catch (error) {
+        console.error("Failed to fetch case data:", error);
             const casesGrid = document.querySelector(".cases-grid");
             casesGrid.innerHTML = `
                 <div style="color: red; text-align: center; grid-column: 1 / -1;">
