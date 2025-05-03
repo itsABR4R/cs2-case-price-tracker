@@ -1,8 +1,33 @@
 document.addEventListener("DOMContentLoaded", async () => {
     let casesArray = []; // Store cases data globally
 
+    // Add last updated timestamp element
+    const main = document.querySelector('main');
+    let lastUpdatedElem = document.getElementById('last-updated');
+    if (!lastUpdatedElem) {
+        lastUpdatedElem = document.createElement('div');
+        lastUpdatedElem.id = 'last-updated';
+        lastUpdatedElem.style.textAlign = 'center';
+        lastUpdatedElem.style.margin = '10px 0';
+        main.insertBefore(lastUpdatedElem, main.firstChild);
+    }
+
     async function fetchAndUpdateCases() {
+    const casesGrid = document.querySelector(".cases-grid");
     try {
+        // Show loading spinner/message
+        casesGrid.innerHTML = `<div class="loading-spinner" style="text-align:center;grid-column:1/-1;padding:2em;">
+            <span class="spinner" style="display:inline-block;width:32px;height:32px;border:4px solid #ccc;border-top:4px solid #333;border-radius:50%;animation:spin 1s linear infinite;vertical-align:middle;"></span>
+            <br>Updating prices, please wait…
+        </div>`;
+        // Add spinner animation style if not present
+        if (!document.getElementById('spinner-style')) {
+            const style = document.createElement('style');
+            style.id = 'spinner-style';
+            style.innerHTML = `@keyframes spin{0%{transform:rotate(0deg);}100%{transform:rotate(360deg);}}`;
+            document.head.appendChild(style);
+        }
+
         console.log("Fetching cases from API...");
             const [pricesResponse, casesResponse, historyResponse] = await Promise.all([
                 fetch("/api/cases"),
@@ -28,7 +53,20 @@ document.addEventListener("DOMContentLoaded", async () => {
             const historyData = await historyResponse.json();
             console.log("Received data:", pricesData);
       
-            const casesGrid = document.querySelector(".cases-grid");
+            // Find the latest timestamp from pricesData
+            let latestTimestamp = null;
+            for (const info of Object.values(pricesData)) {
+                if (!latestTimestamp || new Date(info.timestamp) > new Date(latestTimestamp)) {
+                    latestTimestamp = info.timestamp;
+                }
+            }
+            if (latestTimestamp) {
+                const date = new Date(latestTimestamp);
+                lastUpdatedElem.textContent = `Last updated: ${date.toLocaleString()}`;
+            } else {
+                lastUpdatedElem.textContent = '';
+            }
+      
             casesGrid.innerHTML = ''; // Clear loading message
       
             if (!pricesData || Object.keys(pricesData).length === 0) {
@@ -86,6 +124,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                     Please check the console for more details.
                 </div>
             `;
+        lastUpdatedElem.textContent = '';
         }
     }
 

@@ -211,7 +211,7 @@ app.listen(port, async () => {
     // Initial price fetch and store
     await fetchAndStorePrices();
     
-    // Set up automatic price updates every 10 minutes
-    const TEN_MINUTES = 10 * 60 * 1000;
-    setInterval(fetchAndStorePrices, TEN_MINUTES);
+    // Set up automatic price updates every 5 minutes
+    const FIVE_MINUTES = 5 * 60 * 1000;
+    setInterval(fetchAndStorePrices, FIVE_MINUTES);
 });
