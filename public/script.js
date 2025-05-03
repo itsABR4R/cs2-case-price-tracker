@@ -189,9 +189,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initial fetch
     await fetchAndUpdateCases();
 
-    // Set up automatic updates every 10 minutes
-    const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
-    setInterval(fetchAndUpdateCases, TEN_MINUTES);
+    
 
     // Search functionality
     const searchInput = document.getElementById("search");
@@ -216,5 +214,13 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
         renderCases(sortedCases);
     });
+
+    // --- Socket.IO real-time updates ---
+    if (window.io) {
+        const socket = io();
+        socket.on('prices-updated', (data) => {
+            fetchAndUpdateCases(); // Instantly update prices in the DOM
+        });
+    }
 });
   
