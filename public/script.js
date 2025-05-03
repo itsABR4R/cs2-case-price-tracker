@@ -189,7 +189,6 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initial fetch
     await fetchAndUpdateCases();
 
-    
 
     // Search functionality
     const searchInput = document.getElementById("search");
@@ -222,5 +221,9 @@ document.addEventListener("DOMContentLoaded", async () => {
             fetchAndUpdateCases(); // Instantly update prices in the DOM
         });
     }
+
+    // Set up automatic updates every 5 minutes
+    const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutes in milliseconds
+    setInterval(fetchAndUpdateCases, FIVE_MINUTES);
 });
   
