@@ -4,11 +4,10 @@ document.addEventListener("DOMContentLoaded", async () => {
     async function fetchAndUpdateCases() {
     try {
         console.log("Fetching cases from API...");
-            const [pricesResponse, casesResponse, historyResponse, lastUpdatedResponse] = await Promise.all([
+            const [pricesResponse, casesResponse, historyResponse] = await Promise.all([
                 fetch("/api/cases"),
                 fetch("https://raw.githubusercontent.com/ByMykel/CSGO-API/main/public/api/en/crates.json"),
-                fetch("/api/prices-history"),
-                fetch("/api/last-updated")
+                fetch("/api/prices-history")
             ]);
         
             if (!pricesResponse.ok) {
@@ -24,23 +23,9 @@ document.addEventListener("DOMContentLoaded", async () => {
                 throw new Error("Failed to fetch price history");
             }
 
-            if (!lastUpdatedResponse.ok) {
-                throw new Error("Failed to fetch last updated timestamp");
-            }
-
             const pricesData = await pricesResponse.json();
             const casesData = await casesResponse.json();
             const historyData = await historyResponse.json();
-            const { lastUpdated } = await lastUpdatedResponse.json();
-
-            // Show last updated timestamp
-            const lastUpdatedDiv = document.getElementById('last-updated');
-            if (lastUpdated) {
-                lastUpdatedDiv.textContent = `Prices last fully updated: ${new Date(lastUpdated).toLocaleString()}`;
-            } else {
-                lastUpdatedDiv.textContent = 'Updating prices...';
-            }
-
             console.log("Received data:", pricesData);
       
             const casesGrid = document.querySelector(".cases-grid");
