@@ -13,24 +13,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         main.insertBefore(lastUpdatedElem, main.firstChild);
     }
 
-    function showReloadPrompt() {
-        if (!document.getElementById('reload-banner')) {
-            const banner = document.createElement('div');
-            banner.id = 'reload-banner';
-            banner.style.position = 'fixed';
-            banner.style.top = '0';
-            banner.style.left = '0';
-            banner.style.width = '100%';
-            banner.style.background = '#222';
-            banner.style.color = '#fff';
-            banner.style.textAlign = 'center';
-            banner.style.padding = '1em';
-            banner.style.zIndex = '9999';
-            banner.innerHTML = 'Prices have just been updated. <button id="reload-btn" style="margin-left:1em;padding:0.5em 1em;">Reload for current prices</button>';
-            document.body.appendChild(banner);
-            document.getElementById('reload-btn').onclick = () => location.reload();
-        }
-    }
+    
 
     async function fetchAndUpdateCases() {
     const casesGrid = document.querySelector(".cases-grid");
@@ -84,9 +67,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 const date = new Date(latestTimestamp);
                 lastUpdatedElem.textContent = `Last updated: ${date.toLocaleString()}`;
                 // If the timestamp has changed (prices just updated), show reload prompt
-                if (previousTimestamp && latestTimestamp !== previousTimestamp) {
-                    showReloadPrompt();
-                }
+                
                 previousTimestamp = latestTimestamp;
             } else {
                 lastUpdatedElem.textContent = '';
@@ -222,8 +203,8 @@ document.addEventListener("DOMContentLoaded", async () => {
         });
     }
 
-    // Set up automatic updates every 5 minutes
-    const FIVE_MINUTES = 5 * 60 * 1000; // 5 minutes in milliseconds
-    setInterval(fetchAndUpdateCases, FIVE_MINUTES);
+    // Set up automatic updates every 1 minutes
+    const ONE_MINUTES = 1 * 60 * 1000; // 1 minutes in milliseconds
+    setInterval(fetchAndUpdateCases, ONE_MINUTES);
 });
   
