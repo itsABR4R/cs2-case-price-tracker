@@ -125,9 +125,9 @@ document.addEventListener("DOMContentLoaded", async () => {
     // Initial fetch
     await fetchAndUpdateCases();
 
-    // Set up automatic updates every 24 hours
-    const TWENTY_FOUR_HOURS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
-    setInterval(fetchAndUpdateCases, TWENTY_FOUR_HOURS);
+    // Set up automatic updates every 10 minutes
+    const TEN_MINUTES = 10 * 60 * 1000; // 10 minutes in milliseconds
+    setInterval(fetchAndUpdateCases, TEN_MINUTES);
 
     // Search functionality
     const searchInput = document.getElementById("search");
