@@ -3,6 +3,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     let previousTimestamp = null;
     let currentCurrency = 'USD';
     let usdToBdtRate = 0;
+    let requestCount = 0; // <-- global, persists across cycles
 
     // Add last updated timestamp element
     const main = document.querySelector('main');
@@ -246,6 +247,17 @@ document.addEventListener("DOMContentLoaded", async () => {
                 }, 500); // 0.5s for smoothness
             }
         });
+    }
+
+    async function startPriceFetchLoop() {
+        while (true) {
+            await fetchAndUpdateCases();
+            if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
+                console.log(`\n🚦 Hit ${MAX_REQUESTS_PER_CYCLE} requests. Cooling down for 3 minutes...\n`);
+                await sleep(COOLDOWN_AFTER_MAX_REQUESTS_MS);
+                requestCount = 0;
+            }
+        }
     }
 
 });
