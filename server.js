@@ -114,6 +114,11 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+function randomDelayMs() {
+  // Returns a random delay between 1700ms and 2000ms
+  return 1700 + Math.random() * 300;
+}
+
 async function fetchAndStorePrices() {
   let caseCount = 0;
   let requestCount = 0;
@@ -182,7 +187,7 @@ async function fetchAndStorePrices() {
       console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
     }
 
-    await sleep(INITIAL_SLEEP_MS); // 1.5s delay between each fetch
+    await sleep(randomDelayMs()); // Random delay between 1.7s and 2.0s
   }
 
   io.emit('prices-updated', { timestamp: new Date().toISOString() });

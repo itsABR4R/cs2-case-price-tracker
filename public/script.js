@@ -111,26 +111,26 @@ document.addEventListener("DOMContentLoaded", async () => {
                     const now = new Date();
                     // Find the latest price (current) from pricesData
                     const currentPrice = info.price;
-                    // Find the price from (or closest to) 24 hours ago from historyData
-                    const targetTime = now.getTime() - 24 * 60 * 60 * 1000;
-                    let price24hAgo = null;
+                    // Find the price from (or closest to) 1 hour ago from historyData
+                    const targetTime = now.getTime() - 1 * 60 * 60 * 1000;
+                    let price1hAgo = null;
                     let minDiff = Infinity;
                     for (const record of history) {
                         const recordTime = new Date(record.timestamp).getTime();
                         const diff = Math.abs(recordTime - targetTime);
                         if (diff < minDiff && recordTime <= now.getTime()) {
                             minDiff = diff;
-                            price24hAgo = record.price;
+                            price1hAgo = record.price;
                         }
                     }
                     let priceChange = null;
-                    if (price24hAgo !== null && price24hAgo !== 0) {
-                        priceChange = ((currentPrice - price24hAgo) / price24hAgo) * 100;
+                    if (price1hAgo !== null && price1hAgo !== 0) {
+                        priceChange = ((currentPrice - price1hAgo) / price1hAgo) * 100;
                     }
                     return {
                         name,
                         price: currentPrice, // Always use info.price from pricesData
-                        price24hAgo,
+                        price1hAgo,
                         priceChange,
                         timestamp: info.timestamp,
                         image: caseInfo?.image || null
@@ -181,7 +181,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                 <div class="case-price" data-case-price="${csCase.name}">${formatPrice(csCase.price)}</div>
                 <div class="case-change ${priceChangeClass}">
                     ${priceChangeText}
-                    ${csCase.price24hAgo !== null ? `<br><span class="previous-price">${formatPrice(csCase.price24hAgo)}</span>` : ''}
+                    ${csCase.price1hAgo !== null ? `<br><span class="previous-price">${formatPrice(csCase.price1hAgo)}</span>` : ''}
                 </div>
         `;
 
