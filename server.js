@@ -105,8 +105,8 @@ async function getPriceHistory() {
 
 // --- Integrated fetchPrices logic ---
 const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
-const INITIAL_SLEEP_MS = 1500; // 1.5 second delay per request
-const MAX_RETRIES = 3; // Max retry attempts after hitting rate limits
+const INITIAL_SLEEP_MS = 2700; // 1.5 second delay per request
+const MAX_RETRIES = 10; // Max retry attempts after hitting rate limits
 const MAX_REQUESTS_PER_CYCLE = 200;
 const COOLDOWN_AFTER_MAX_REQUESTS_MS = 3 * 60 * 1000; // 3 minutes
 
