@@ -186,20 +186,25 @@ document.addEventListener("DOMContentLoaded", async () => {
     const sortSelect = document.getElementById("sort");
     sortSelect.addEventListener("change", (e) => {
         const sortBy = e.target.value;
-        const sortedCases = [...casesArray].sort((a, b) => {
-            if (sortBy === "name") {
-                return a.name.localeCompare(b.name);
-            } else if (sortBy === "price") {
-                return b.price - a.price;
-            }
-        });
+        let sortedCases;
+        if (sortBy === "name") {
+            sortedCases = [...casesArray].sort((a, b) => a.name.localeCompare(b.name));
+        } else if (sortBy === "price" || sortBy === "price-desc") {
+            sortedCases = [...casesArray].sort((a, b) => b.price - a.price);
+        } else if (sortBy === "price-asc") {
+            sortedCases = [...casesArray].sort((a, b) => a.price - b.price);
+        } else {
+            sortedCases = [...casesArray];
+        }
         renderCases(sortedCases);
     });
 
     // --- Socket.IO real-time updates ---
     if (window.io) {
         const socket = io();
-        
+        socket.on('prices-updated', (data) => {
+            fetchAndUpdateCases(); // Instantly update prices in the DOM
+        });
         socket.on('price-updated', ({ caseName, price, timestamp }) => {
             // Find the price element for this case
             const priceElem = document.querySelector(`[data-case-price="${caseName}"]`);
