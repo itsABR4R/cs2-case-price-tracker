@@ -227,7 +227,8 @@ app.get('/health', (req, res) => {
 async function startPriceFetchLoop() {
     while (true) {
         await fetchAndStorePrices();
-        await sleep(5 * 60 * 1000); // 5 minutes
+        console.log('⏳ Waiting 40 seconds before next fetch cycle...');
+        await sleep(40 * 1000); // 40 seconds
     }
 }
 
