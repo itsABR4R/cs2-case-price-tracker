@@ -105,10 +105,10 @@ async function getPriceHistory() {
 
 // --- Integrated fetchPrices logic ---
 const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
-const INITIAL_SLEEP_MS = 1000; // 1 second delay per request
+const INITIAL_SLEEP_MS = 1500; // 1.5 second delay per request
 const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
-const CASES_BEFORE_TIMEOUT = 20; // Number of cases before taking a break
-const TIMEOUT_DURATION_MS = 30000; // 30 seconds timeout
+const MAX_REQUESTS_PER_CYCLE = 200;
+const COOLDOWN_AFTER_MAX_REQUESTS_MS = 3 * 60 * 1000; // 3 minutes
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -116,6 +116,7 @@ function sleep(ms) {
 
 async function fetchAndStorePrices() {
   let caseCount = 0;
+  let requestCount = 0;
   const now = new Date();
 
   for (const caseName of cases) {
@@ -123,10 +124,11 @@ async function fetchAndStorePrices() {
     let attempts = 0;
     let priceFetched = false;
 
-    // Check if we need to take a timeout
-    if (caseCount > 0 && caseCount % CASES_BEFORE_TIMEOUT === 0) {
-      console.log(`\n⏳ Taking a ${TIMEOUT_DURATION_MS/1000} second break after ${caseCount} cases...\n`);
-      await sleep(TIMEOUT_DURATION_MS);
+    // Check if we've hit the max requests for this cycle
+    if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
+      console.log(`\n🚦 Hit ${MAX_REQUESTS_PER_CYCLE} requests. Cooling down for 3 minutes...\n`);
+      await sleep(COOLDOWN_AFTER_MAX_REQUESTS_MS);
+      requestCount = 0;
     }
 
     while (attempts < MAX_RETRIES && !priceFetched) {
@@ -162,6 +164,7 @@ async function fetchAndStorePrices() {
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;
+        requestCount++;
       } catch (e) {
         if (e.response && e.response.status === 429) {
           attempts++;
@@ -179,7 +182,7 @@ async function fetchAndStorePrices() {
       console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
     }
 
-    await sleep(INITIAL_SLEEP_MS); // Delay between successful requests
+    await sleep(INITIAL_SLEEP_MS); // 1.5s delay between each fetch
   }
 
   io.emit('prices-updated', { timestamp: new Date().toISOString() });
@@ -227,8 +230,7 @@ app.get('/health', (req, res) => {
 async function startPriceFetchLoop() {
     while (true) {
         await fetchAndStorePrices();
-        console.log('⏳ Waiting 40 seconds before next fetch cycle...');
-        await sleep(40 * 1000); // 40 seconds
+        // No cooldown here; handled in fetchAndStorePrices if 200 requests are hit
     }
 }
 
