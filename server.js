@@ -150,6 +150,14 @@ async function fetchAndStorePrices() {
     let attempts = 0;
     let priceFetched = false;
 
+    // Check if we're on cooldown
+    if (isOnCooldown) {
+      console.log("Currently in cooldown. Waiting...");
+      await sleep(cooldownTime); // Wait for cooldown to finish
+      isOnCooldown = false; // Reset cooldown status after waiting
+      rateLimitHits = 0; // Reset the rate limit hits
+    }
+
     // Check if we've hit the max requests for this cycle
     if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
       console.log(`\n🚦 Hit ${MAX_REQUESTS_PER_CYCLE} requests. Cooling down for 3 minutes...\n`);
@@ -193,6 +201,7 @@ async function fetchAndStorePrices() {
         requestCount++;
       } catch (e) {
         if (e.response && e.response.status === 429) {
+          handleRateLimit(); // Call the rate limit handler
           attempts++;
           const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS; // Exponential backoff
           console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
