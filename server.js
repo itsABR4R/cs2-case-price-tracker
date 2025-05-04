@@ -119,8 +119,8 @@ function sleep(ms) {
 }
 
 function randomDelayMs() {
-  // Returns a random delay between 1700ms and 2000ms
-  return 1700 + Math.random() * 300;
+  // Returns a random delay between 2700ms and 3000ms
+  return 2700 + Math.random() * 300;
 }
 
 // Function to handle rate limit
@@ -149,14 +149,6 @@ async function fetchAndStorePrices() {
     if (caseName === "Consumer Grade Container") continue;
     let attempts = 0;
     let priceFetched = false;
-
-    // Check if we're on cooldown
-    if (isOnCooldown) {
-      console.log("Currently in cooldown. Waiting...");
-      await sleep(cooldownTime); // Wait for cooldown to finish
-      isOnCooldown = false; // Reset cooldown status after waiting
-      rateLimitHits = 0; // Reset the rate limit hits
-    }
 
     // Check if we've hit the max requests for this cycle
     if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
@@ -201,7 +193,6 @@ async function fetchAndStorePrices() {
         requestCount++;
       } catch (e) {
         if (e.response && e.response.status === 429) {
-          handleRateLimit(); // Call the rate limit handler
           attempts++;
           const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS; // Exponential backoff
           console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
