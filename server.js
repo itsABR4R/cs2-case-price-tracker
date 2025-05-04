@@ -106,9 +106,13 @@ async function getPriceHistory() {
 // --- Integrated fetchPrices logic ---
 const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
 const INITIAL_SLEEP_MS = 1500; // 1.5 second delay per request
-const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
+const MAX_RETRIES = 3; // Max retry attempts after hitting rate limits
 const MAX_REQUESTS_PER_CYCLE = 200;
 const COOLDOWN_AFTER_MAX_REQUESTS_MS = 3 * 60 * 1000; // 3 minutes
+
+let rateLimitHits = 0; // Counter for rate limit hits
+const cooldownTime = 180000; // 3 minutes in milliseconds
+let isOnCooldown = false;
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -117,6 +121,23 @@ function sleep(ms) {
 function randomDelayMs() {
   // Returns a random delay between 1700ms and 2000ms
   return 1700 + Math.random() * 300;
+}
+
+// Function to handle rate limit
+function handleRateLimit() {
+    rateLimitHits++;
+    if (rateLimitHits >= 3) {
+        console.log("Rate limit hit 3 times. Entering cooldown for 3 minutes.");
+        isOnCooldown = true;
+        setTimeout(() => {
+            isOnCooldown = false;
+            rateLimitHits = 0; // Reset the counter after cooldown
+            console.log("Cooldown over. You can make requests again.");
+        }, cooldownTime);
+    } else {
+        console.log(`Rate limit hit for Operation Broken Fang Case. Retrying in ${rateLimitHits * 3}s...`);
+        // Retry logic here
+    }
 }
 
 async function fetchAndStorePrices() {
