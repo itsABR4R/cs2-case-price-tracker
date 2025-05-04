@@ -141,6 +141,7 @@ document.addEventListener("DOMContentLoaded", async () => {
         cases.forEach(csCase => {
             const card = document.createElement("div");
             card.className = "case-card";
+            card.setAttribute('data-case-name', csCase.name);
 
             const priceChangeText = csCase.priceChange !== null 
                 ? `${csCase.priceChange >= 0 ? '+' : ''}${csCase.priceChange.toFixed(2)}%`
@@ -156,7 +157,7 @@ document.addEventListener("DOMContentLoaded", async () => {
                      class="case-image"
                      onerror="this.src='https://steamcommunity-a.akamaihd.net/economy/image/-9a81dlWLwJ2UUGcVs_nsVtzdOEdtWwKGZZLQHTxDZ7I56KU0Zwwo4NUX4oFJZEHLbXH5ApeO4YmlhxYQknCRvCo04DEVlxkKgpot621FARpnaLLJTwW09-3h5TZlvD7PYTZk2pH8fp9i_vG8Y_2j1Gx5UY4Yz_3J4euc1G7Yw5qYw-1r1G7gO3q0hK3v8nN2nA/360fx360f'">
                 <div class="case-name">${csCase.name}</div>
-                <div class="case-price">$${csCase.price.toFixed(2)}</div>
+                <div class="case-price" data-case-price="${csCase.name}">$${csCase.price.toFixed(2)}</div>
                 <div class="case-change ${priceChangeClass}">
                     ${priceChangeText}
                     ${csCase.price24hAgo !== null ? `<br><span class="previous-price">$${csCase.price24hAgo.toFixed(2)}</span>` : ''}
@@ -200,6 +201,21 @@ document.addEventListener("DOMContentLoaded", async () => {
         const socket = io();
         socket.on('prices-updated', (data) => {
             fetchAndUpdateCases(); // Instantly update prices in the DOM
+        });
+        socket.on('price-updated', ({ caseName, price, timestamp }) => {
+            // Find the price element for this case
+            const priceElem = document.querySelector(`[data-case-price="${caseName}"]`);
+            if (priceElem) {
+                // Add loading animation
+                priceElem.classList.add('loading');
+                // Optionally, show spinner while updating
+                priceElem.innerHTML = '<span class="price-spinner"></span>';
+                // After a short delay, update the price (simulate fetch time)
+                setTimeout(() => {
+                    priceElem.textContent = `$${price.toFixed(2)}`;
+                    priceElem.classList.remove('loading');
+                }, 500); // 0.5s for smoothness
+            }
         });
     }
 

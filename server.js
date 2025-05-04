@@ -115,7 +115,6 @@ function sleep(ms) {
 }
 
 async function fetchAndStorePrices() {
-  const result = {};
   let caseCount = 0;
   const now = new Date();
 
@@ -136,10 +135,30 @@ async function fetchAndStorePrices() {
         const res = await axios.get(url);
         const priceStr = res.data.lowest_price || "$0.00";
         const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
-        result[caseName] = {
-          price: price,
-          timestamp: now.toISOString()
-        };
+        const timestamp = now.toISOString();
+        // Save to DB immediately
+        const client = await pool.connect();
+        try {
+          await client.query('BEGIN');
+          // Remove any existing price for this case
+          await client.query('DELETE FROM prices WHERE case_name = $1', [caseName]);
+          await client.query(
+            'INSERT INTO prices (case_name, price, timestamp) VALUES ($1, $2, $3)',
+            [caseName, price, timestamp]
+          );
+          await client.query(
+            'INSERT INTO price_history (case_name, price, timestamp) VALUES ($1, $2, $3)',
+            [caseName, price, timestamp]
+          );
+          await client.query('COMMIT');
+        } catch (error) {
+          await client.query('ROLLBACK');
+          throw error;
+        } finally {
+          client.release();
+        }
+        // Emit per-case update
+        io.emit('price-updated', { caseName, price, timestamp });
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;
@@ -163,7 +182,6 @@ async function fetchAndStorePrices() {
     await sleep(INITIAL_SLEEP_MS); // Delay between successful requests
   }
 
-  await savePrices(result);
   io.emit('prices-updated', { timestamp: new Date().toISOString() });
   console.log("\n✨ Successfully completed fetching all case prices!");
   console.log(`📊 Total cases processed: ${caseCount}`);
