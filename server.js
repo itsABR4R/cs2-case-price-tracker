@@ -164,6 +164,14 @@ async function fetchAndStorePrices() {
         const priceStr = res.data.lowest_price || "$0.00";
         const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
         const timestamp = now.toISOString();
+        const previousPriceResult = await pool.query('SELECT price FROM prices WHERE case_name = $1', [caseName]);
+        const previousPrice = previousPriceResult.rows.length > 0 ? previousPriceResult.rows[0].price : null;
+
+        // Calculate percent change
+        let percentChange = null;
+        if (previousPrice !== null) {
+          percentChange = ((price - previousPrice) / previousPrice) * 100;
+        }
         // Save to DB immediately
         const client = await pool.connect();
         try {
@@ -186,7 +194,7 @@ async function fetchAndStorePrices() {
           client.release();
         }
         // Emit per-case update
-        io.emit('price-updated', { caseName, price, timestamp });
+        io.emit('price-updated', { caseName, price, timestamp, percentChange });
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;
@@ -209,18 +217,18 @@ async function fetchAndStorePrices() {
         }
       }
 
+    }
+
+    if (!priceFetched) {
+      console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
+    }
+
+    await sleep(randomDelayMs());
   }
 
-  if (!priceFetched) {
-    console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
-  }
-
-  await sleep(randomDelayMs());
-}
-
-io.emit('prices-updated', { timestamp: new Date().toISOString() });
-console.log("\n✨ Successfully completed fetching all case prices!");
-console.log(`📊 Total cases processed: ${caseCount}`);
+  io.emit('prices-updated', { timestamp: new Date().toISOString() });
+  console.log("\n✨ Successfully completed fetching all case prices!");
+  console.log(`📊 Total cases processed: ${caseCount}`);
 }
 
 // --- End fetchPrices logic ---
