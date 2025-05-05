@@ -164,12 +164,12 @@ async function fetchAndStorePrices() {
         const priceStr = res.data.lowest_price || "$0.00";
         const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
         const timestamp = now.toISOString();
-        const previousPriceResult = await pool.query('SELECT price FROM prices WHERE case_name = $1', [caseName]);
+        const previousPriceResult = await pool.query("SELECT price FROM price_history WHERE case_name = $1 AND timestamp <= NOW() - INTERVAL '1 hour' ORDER BY timestamp DESC LIMIT 1", [caseName]);
         const previousPrice = previousPriceResult.rows.length > 0 ? previousPriceResult.rows[0].price : null;
 
         // Calculate percent change
         let percentChange = null;
-        if (previousPrice !== null) {
+        if (previousPrice !== null && previousPrice !== 0) {
           percentChange = ((price - previousPrice) / previousPrice) * 100;
         }
         // Save to DB immediately
@@ -194,7 +194,7 @@ async function fetchAndStorePrices() {
           client.release();
         }
         // Emit per-case update
-        io.emit('price-updated', { caseName, price, timestamp, percentChange });
+        io.emit('price-updated', { caseName, price, timestamp, percentChange: percentChange !== null ? parseFloat(percentChange.toFixed(2)) : null });
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;
