@@ -108,6 +108,7 @@ const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&curr
 const INITIAL_SLEEP_MS = 1500; // 1.5 second delay per request
 const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
 const MAX_REQUESTS_PER_CYCLE = 200;
+const COOLDOWN_AFTER_MAX_RETRIES = 3 * 60 * 1000;
 const COOLDOWN_AFTER_MAX_REQUESTS_MS = 3 * 60 * 1000; // 4 minutes
 
 let rateLimitHits = 0; // Counter for rate limit hits
@@ -207,15 +208,21 @@ async function fetchAndStorePrices() {
         }
       } catch (e) {
         if (e.response && e.response.status === 429) {
-          attempts++;
-          const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS; // Exponential backoff
-          console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
-          await sleep(backoffTime); // Wait before retrying
+            attempts++;
+            const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS; // Exponential backoff
+            console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
+            await sleep(backoffTime); // Wait before retrying
         } else {
-          console.error(`Failed to fetch ${caseName}:`, e.message);
-          break; // Stop retrying for other types of errors
+            console.error(`Failed to fetch ${caseName}:`, e.message);
+            break; // Stop retrying for other types of errors
         }
-      }
+    
+        // Check if max retries have been reached
+        if (attempts >= MAX_RETRIES) {
+            console.warn(`Max retries reached for ${caseName}. Cooling down for 3 minutes...`);
+            await sleep(COOLDOWN_AFTER_MAX_RETRIES); // Cooldown after max retries
+        }
+    }
 
     }
 
