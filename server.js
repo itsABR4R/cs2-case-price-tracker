@@ -186,7 +186,7 @@ async function fetchAndStorePrices() {
           client.release();
         }
         // Emit per-case update
-        io.emit('price-updated', { caseName, price, timestamp });
+        io.emit('price-updated', { caseName, price, timestamp, percentChange });
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;

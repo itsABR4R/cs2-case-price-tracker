@@ -232,7 +232,7 @@ document.addEventListener("DOMContentLoaded", async () => {
     // --- Socket.IO real-time updates ---
     if (window.io) {
         const socket = io();
-        socket.on('price-updated', ({ caseName, price, timestamp }) => {
+        socket.on('price-updated', ({ caseName, price, percentChange, timestamp }) => {
             const priceElem = document.querySelector(`[data-case-price="${caseName}"]`);
             if (priceElem) {
                 // Add loading animation
@@ -243,6 +243,14 @@ document.addEventListener("DOMContentLoaded", async () => {
                 // After a short delay, update the price and percent change
                 setTimeout(() => {
                     priceElem.textContent = formatPrice(price);
+                    if (percentChangeElem) {
+                        percentChangeElem.textContent = percentChange !== null ? `${percentChange.toFixed(2)}%` : 'N/A';
+                    }
+            
+                    // Update the timestamp if needed
+                    if (timestampElem) {
+                        timestampElem.textContent = new Date(timestamp).toLocaleString(); // Format the timestamp as needed
+                    }
                     priceElem.classList.remove('loading');
                 }, 500); // 0.5s for smoothness
             }
