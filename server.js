@@ -162,7 +162,7 @@ async function fetchAndStorePrices() {
       try {
         const res = await axios.get(url);
         const priceStr = res.data.lowest_price || "$0.00";
-        const newPrice = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+        const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
         const timestamp = now.toISOString();
         const previousPriceResult = await pool.query('SELECT price FROM prices WHERE case_name = $1', [caseName]);
         const previousPrice = previousPriceResult.rows.length > 0 ? previousPriceResult.rows[0].price : null;
@@ -170,7 +170,7 @@ async function fetchAndStorePrices() {
         // Calculate percent change
         let percentChange = null;
         if (previousPrice !== null) {
-          percentChange = ((newPrice - previousPrice) / previousPrice) * 100;
+          percentChange = ((price - previousPrice) / previousPrice) * 100;
         }
         // Save to DB immediately
         const client = await pool.connect();
@@ -194,7 +194,7 @@ async function fetchAndStorePrices() {
           client.release();
         }
         // Emit per-case update
-        io.emit('price-updated', { caseName, price: newPrice, timestamp, percentChange });
+        io.emit('price-updated', { caseName, price, timestamp, percentChange });
         console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
         priceFetched = true;
         caseCount++;
