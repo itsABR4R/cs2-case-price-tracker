@@ -232,17 +232,20 @@ document.addEventListener("DOMContentLoaded", async () => {
     // --- Socket.IO real-time updates ---
     if (window.io) {
         const socket = io();
-        socket.on('price-updated', ({ caseName, price, timestamp }) => {
-            // Find the price element for this case
+        socket.on('price-updated', ({ caseName, price, timestamp, percentChange }) => {
             const priceElem = document.querySelector(`[data-case-price="${caseName}"]`);
             if (priceElem) {
                 // Add loading animation
                 priceElem.classList.add('loading');
                 // Show spinner while updating
                 priceElem.innerHTML = '<span class="price-spinner"></span>';
-                // After a short delay, update the price (simulate fetch time)
+        
+                // After a short delay, update the price and percent change
                 setTimeout(() => {
-                    priceElem.textContent = formatPrice(price);
+                    const changeText = percentChange !== null 
+                        ? ` (${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%)` 
+                        : '';
+                    priceElem.textContent = formatPrice(price) + changeText;
                     priceElem.classList.remove('loading');
                 }, 500); // 0.5s for smoothness
             }

@@ -141,86 +141,108 @@ function handleRateLimit() {
 }
 
 async function fetchAndStorePrices() {
-  let caseCount = 0;
-  let requestCount = 0;
-  const now = new Date();
-
-  for (const caseName of cases) {
-    if (caseName === "Consumer Grade Container") continue;
-    let attempts = 0;
-    let priceFetched = false;
-
-    // Check if we've hit the max requests for this cycle
-    if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
-      console.log(`\n🚦 Hit ${MAX_REQUESTS_PER_CYCLE} requests. Cooling down for 3 minutes...\n`);
-      await sleep(COOLDOWN_AFTER_MAX_REQUESTS_MS);
-      requestCount = 0;
-    }
-
-    while (attempts < MAX_RETRIES && !priceFetched) {
-      const url = API_URL + encodeURIComponent(caseName);
-      try {
-        const res = await axios.get(url);
-        const priceStr = res.data.lowest_price || "$0.00";
-        const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
-        const timestamp = now.toISOString();
-        // Save to DB immediately
-        const client = await pool.connect();
+    let caseCount = 0;
+    let requestCount = 0;
+    const now = new Date();
+  
+    for (const caseName of cases) {
+      if (caseName === "Consumer Grade Container") continue;
+      let attempts = 0;
+      let priceFetched = false;
+  
+      if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
+        console.log(`\n🚦 Hit ${MAX_REQUESTS_PER_CYCLE} requests. Cooling down for 3 minutes...\n`);
+        await sleep(COOLDOWN_AFTER_MAX_REQUESTS_MS);
+        requestCount = 0;
+      }
+  
+      while (attempts < MAX_RETRIES && !priceFetched) {
+        const url = API_URL + encodeURIComponent(caseName);
         try {
-          await client.query('BEGIN');
-          // Remove any existing price for this case
-          await client.query('DELETE FROM prices WHERE case_name = $1', [caseName]);
-          await client.query(
-            'INSERT INTO prices (case_name, price, timestamp) VALUES ($1, $2, $3)',
-            [caseName, price, timestamp]
-          );
-          await client.query(
-            'INSERT INTO price_history (case_name, price, timestamp) VALUES ($1, $2, $3)',
-            [caseName, price, timestamp]
-          );
-          await client.query('COMMIT');
-        } catch (error) {
-          await client.query('ROLLBACK');
-          throw error;
-        } finally {
-          client.release();
-        }
-        // Emit per-case update
-        io.emit('price-updated', { caseName, price, timestamp });
-        console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
-        priceFetched = true;
-        caseCount++;
-        requestCount++;
-
-        // Add cooldown after every 20 cases fetched
-        if (caseCount % 20 === 0) {
-          console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 30 seconds...\n`);
-          await sleep(10000); // 30 seconds cooldown
-        }
-      } catch (e) {
-        if (e.response && e.response.status === 429) {
-          attempts++;
-          const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS; // Exponential backoff
-          console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
-          await sleep(backoffTime); // Wait before retrying
-        } else {
-          console.error(`Failed to fetch ${caseName}:`, e.message);
-          break; // Stop retrying for other types of errors
+          const res = await axios.get(url);
+          const priceStr = res.data.lowest_price || "$0.00";
+          const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+          const timestamp = now.toISOString();
+  
+          const client = await pool.connect();
+          let previousPrice = null;
+          try {
+            await client.query('BEGIN');
+  
+            // Get previous price if it exists
+            const prevResult = await client.query(
+              'SELECT price FROM prices WHERE case_name = $1',
+              [caseName]
+            );
+            if (prevResult.rows.length > 0) {
+              previousPrice = parseFloat(prevResult.rows[0].price);
+            }
+  
+            await client.query('DELETE FROM prices WHERE case_name = $1', [caseName]);
+            await client.query(
+              'INSERT INTO prices (case_name, price, timestamp) VALUES ($1, $2, $3)',
+              [caseName, price, timestamp]
+            );
+            await client.query(
+              'INSERT INTO price_history (case_name, price, timestamp) VALUES ($1, $2, $3)',
+              [caseName, price, timestamp]
+            );
+  
+            await client.query('COMMIT');
+          } catch (error) {
+            await client.query('ROLLBACK');
+            throw error;
+          } finally {
+            client.release();
+          }
+  
+          // Calculate percent change if previous price exists
+          let percentChange = null;
+          if (previousPrice !== null && previousPrice !== 0) {
+            percentChange = ((price - previousPrice) / previousPrice) * 100;
+          }
+  
+          io.emit('price-updated', {
+            caseName,
+            price,
+            timestamp,
+            percentChange: percentChange !== null ? percentChange.toFixed(2) : null,
+          });
+  
+          console.log(`Fetched: ${caseName} — $${price.toFixed(2)}${percentChange !== null ? ` (${percentChange.toFixed(2)}%)` : ""}`);
+          priceFetched = true;
+          caseCount++;
+          requestCount++;
+  
+          if (caseCount % 20 === 0) {
+            console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 10 seconds...\n`);
+            await sleep(10000);
+          }
+        } catch (e) {
+          if (e.response && e.response.status === 429) {
+            attempts++;
+            const backoffTime = Math.pow(2, attempts) * INITIAL_SLEEP_MS;
+            console.warn(`Rate limit hit for ${caseName}. Retrying in ${backoffTime / 1000}s...`);
+            await sleep(backoffTime);
+          } else {
+            console.error(`Failed to fetch ${caseName}:`, e.message);
+            break;
+          }
         }
       }
+  
+      if (!priceFetched) {
+        console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
+      }
+  
+      await sleep(randomDelayMs());
     }
-
-    if (!priceFetched) {
-      console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
-    }
-
-    await sleep(randomDelayMs()); // Random delay between 2.7s and 3.0s
+  
+    io.emit('prices-updated', { timestamp: new Date().toISOString() });
+    console.log("\n✨ Successfully completed fetching all case prices!");
+    console.log(`📊 Total cases processed: ${caseCount}`);
   }
-
-  io.emit('prices-updated', { timestamp: new Date().toISOString() });
-  console.log("\n✨ Successfully completed fetching all case prices!");
-  console.log(`📊 Total cases processed: ${caseCount}`);
-}
+  
 // --- End fetchPrices logic ---
 
 // API endpoint to get cases with previous prices
