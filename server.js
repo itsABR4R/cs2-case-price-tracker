@@ -105,10 +105,10 @@ async function getPriceHistory() {
 
 // --- Integrated fetchPrices logic ---
 const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
-const INITIAL_SLEEP_MS = 1500; // 1.5 second delay per request
+const INITIAL_SLEEP_MS = 2100; // 1.5 second delay per request
 const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
 const MAX_REQUESTS_PER_CYCLE = 200;
-const COOLDOWN_AFTER_MAX_REQUESTS_MS = 4 * 60 * 1000; // 4 minutes
+const COOLDOWN_AFTER_MAX_REQUESTS_MS = 3 * 60 * 1000; // 4 minutes
 
 let rateLimitHits = 0; // Counter for rate limit hits
 const cooldownTime = 180000; // 3 minutes in milliseconds
@@ -120,14 +120,14 @@ function sleep(ms) {
 
 function randomDelayMs() {
   // Returns a random delay between 2700ms and 3000ms
-  return 1500 + Math.random() * 150;
+  return 2500 + Math.random() * 250;
 }
 
 // Function to handle rate limit
 function handleRateLimit() {
     rateLimitHits++;
-    if (rateLimitHits >= 3) {
-        console.log("Rate limit hit 3 times. Entering cooldown for 3 minutes.");
+    if (rateLimitHits >= 5) {
+        console.log("Rate limit hit 5 times. Entering cooldown for 3 minutes.");
         isOnCooldown = true;
         setTimeout(() => {
             isOnCooldown = false;
