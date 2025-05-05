@@ -195,7 +195,7 @@ async function fetchAndStorePrices() {
         // Add cooldown after every 20 cases fetched
         if (caseCount % 20 === 0) {
           console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 30 seconds...\n`);
-          await sleep(30000); // 30 seconds cooldown
+          await sleep(10000); // 30 seconds cooldown
         }
       } catch (e) {
         if (e.response && e.response.status === 429) {
