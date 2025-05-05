@@ -105,10 +105,10 @@ async function getPriceHistory() {
 
 // --- Integrated fetchPrices logic ---
 const API_URL = "https://steamcommunity.com/market/priceoverview/?appid=730&currency=1&market_hash_name=";
-const INITIAL_SLEEP_MS = 2700; // 1.5 second delay per request
-const MAX_RETRIES = 10; // Max retry attempts after hitting rate limits
+const INITIAL_SLEEP_MS = 1500; // 1.5 second delay per request
+const MAX_RETRIES = 5; // Max retry attempts after hitting rate limits
 const MAX_REQUESTS_PER_CYCLE = 200;
-const COOLDOWN_AFTER_MAX_REQUESTS_MS = 3 * 60 * 1000; // 3 minutes
+const COOLDOWN_AFTER_MAX_REQUESTS_MS = 4 * 60 * 1000; // 4 minutes
 
 let rateLimitHits = 0; // Counter for rate limit hits
 const cooldownTime = 180000; // 3 minutes in milliseconds
@@ -120,7 +120,7 @@ function sleep(ms) {
 
 function randomDelayMs() {
   // Returns a random delay between 2700ms and 3000ms
-  return 2700 + Math.random() * 300;
+  return 1500 + Math.random() * 150;
 }
 
 // Function to handle rate limit
@@ -191,6 +191,12 @@ async function fetchAndStorePrices() {
         priceFetched = true;
         caseCount++;
         requestCount++;
+
+        // Add cooldown after every 20 cases fetched
+        if (caseCount % 20 === 0) {
+          console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 30 seconds...\n`);
+          await sleep(30000); // 30 seconds cooldown
+        }
       } catch (e) {
         if (e.response && e.response.status === 429) {
           attempts++;
@@ -208,7 +214,7 @@ async function fetchAndStorePrices() {
       console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
     }
 
-    await sleep(randomDelayMs()); // Random delay between 1.7s and 2.0s
+    await sleep(randomDelayMs()); // Random delay between 2.7s and 3.0s
   }
 
   io.emit('prices-updated', { timestamp: new Date().toISOString() });
