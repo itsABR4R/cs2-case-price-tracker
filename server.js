@@ -120,8 +120,8 @@ function sleep(ms) {
 }
 
 function randomDelayMs() {
-  // Returns a random delay between 2700ms and 3000ms
-  return 2500 + Math.random() * 250;
+  // Returns a random delay between 1.5 seconds and 1.8 seconds
+  return 1500 + Math.random() * 300;
 }
 
 // Function to handle rate limit
@@ -201,10 +201,10 @@ async function fetchAndStorePrices() {
         caseCount++;
         requestCount++;
 
-        // Add cooldown after every 20 cases fetched
-        if (caseCount % 20 === 0) {
-          console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 20 seconds...\n`);
-          await sleep(20000); // 20 seconds cooldown
+        // Add cooldown after every 40 cases fetched
+        if (caseCount % 40 === 0) {
+          console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 60 seconds...\n`);
+          await sleep(60000); // 60 seconds cooldown
         }
       } catch (e) {
         if (e.response && e.response.status === 429) {
