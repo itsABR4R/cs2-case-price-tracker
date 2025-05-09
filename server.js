@@ -208,8 +208,12 @@ async function fetchAndStorePrices() {
         // Check if 40 cases have been fetched (1 cycle)
         if (caseCount % 40 === 0) {
           cycleCount++; // Increment cycle count
-          console.log(`\n🚦 Completed cycle ${cycleCount}. Taking a 5-minute break...\n`);
-          await sleep(5 * 60 * 1000); // 5 minutes cooldown
+          console.log(`\n🚦 Completed cycle ${cycleCount}.`);
+          // Only take a 5-minute break after every 10 cycles
+          if (cycleCount % 10 === 0) {
+            console.log(`\n🚦 10 cycles completed. Taking a 5-minute break...\n`);
+            await sleep(5 * 60 * 1000); // 5 minutes cooldown
+          }
         }
       } catch (e) {
         if (e.response && e.response.status === 429) {
