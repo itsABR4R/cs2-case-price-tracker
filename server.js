@@ -160,9 +160,19 @@ async function fetchAndStorePrices() {
         const newPrice = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
         const timestamp = now.toISOString();
 
-        // Fetch the previous price from the database
-        const previousPriceResult = await pool.query('SELECT price FROM prices WHERE case_name = $1', [caseName]);
-        const previousPrice = previousPriceResult.rows.length > 0 ? previousPriceResult.rows[0].price : null;
+        // Fetch the price from 1 hour ago from price_history
+        const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+        const price1hAgoResult = await pool.query(
+          'SELECT price FROM price_history WHERE case_name = $1 AND timestamp <= $2 ORDER BY timestamp DESC LIMIT 1',
+          [caseName, oneHourAgo]
+        );
+        const price1hAgo = price1hAgoResult.rows.length > 0 ? price1hAgoResult.rows[0].price : null;
+
+        // Calculate percent change based on 1 hour ago
+        let percentChange = null;
+        if (price1hAgo !== null && price1hAgo !== 0) {
+          percentChange = ((newPrice - price1hAgo) / price1hAgo) * 100;
+        }
 
         // Save to DB immediately
         const client = await pool.connect();
@@ -185,14 +195,8 @@ async function fetchAndStorePrices() {
           client.release();
         }
 
-        // Calculate percentage change if previous price exists
-        let percentChange = null;
-        if (previousPrice !== null) {
-          percentChange = ((newPrice - previousPrice) / previousPrice) * 100;
-        }
-
-        // Emit per-case update with price and percent change
-        io.emit('price-updated', { caseName, price: newPrice, timestamp, percentChange });
+        // Emit per-case update with price, percent change, and price1hAgo
+        io.emit('price-updated', { caseName, price: newPrice, timestamp, percentChange, price1hAgo });
         console.log(`Fetched: ${caseName} — $${newPrice.toFixed(2)} (Change: ${percentChange ? percentChange.toFixed(2) + '%' : 'N/A'})`);
         
         priceFetched = true;

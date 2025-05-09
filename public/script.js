@@ -233,26 +233,36 @@ document.addEventListener("DOMContentLoaded", async () => {
     if (window.io) {
         const socket = io();
         socket.on('price-updated', ({ caseName, price, percentChange, timestamp }) => {
+            // Update price
             const priceElem = document.querySelector(`[data-case-price="${caseName}"]`);
             if (priceElem) {
-                // Add loading animation
                 priceElem.classList.add('loading');
-                // Show spinner while updating
                 priceElem.innerHTML = '<span class="price-spinner"></span>';
-        
-                // After a short delay, update the price and percent change
+
                 setTimeout(() => {
                     priceElem.textContent = formatPrice(price);
-                    if (percentChangeElem) {
-                        percentChangeElem.textContent = percentChange !== null ? `${percentChange.toFixed(2)}%` : 'N/A';
-                    }
-            
-                    // Update the timestamp if needed
-                    if (timestampElem) {
-                        timestampElem.textContent = new Date(timestamp).toLocaleString(); // Format the timestamp as needed
-                    }
                     priceElem.classList.remove('loading');
-                }, 500); // 0.5s for smoothness
+                }, 500);
+            }
+
+            // Update percent change
+            // Find the card for this case
+            const card = document.querySelector(`.case-card[data-case-name="${caseName}"]`);
+            if (card) {
+                const changeElem = card.querySelector('.case-change');
+                if (changeElem) {
+                    let percentText = 'N/A';
+                    let changeClass = '';
+                    if (percentChange !== null && !isNaN(percentChange)) {
+                        percentText = `${percentChange > 0 ? '+' : ''}${percentChange.toFixed(2)}%`;
+                        changeClass = percentChange > 0 ? 'positive' : 'negative';
+                    }
+                    changeElem.innerHTML = `
+                        ${percentText}
+                        ${changeElem.querySelector('.previous-price') ? `<br>${changeElem.querySelector('.previous-price').outerHTML}` : ''}
+                    `;
+                    changeElem.className = `case-change ${changeClass}`;
+                }
             }
         });
     }
