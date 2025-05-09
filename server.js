@@ -145,6 +145,7 @@ async function fetchAndStorePrices() {
   let caseCount = 0;
   let requestCount = 0;
   const now = new Date();
+  let cycleCount = 0; // Counter for cycles
 
   for (const caseName of cases) {
     if (caseName === "Consumer Grade Container") continue;
@@ -203,9 +204,11 @@ async function fetchAndStorePrices() {
           console.log(`\n🚦 Fetched ${caseCount} cases. Taking a 30-second break...\n`);
           await sleep(30000); // 30 seconds cooldown
         }
-        // Check if 40 cases have been fetched
+
+        // Check if 40 cases have been fetched (1 cycle)
         if (caseCount % 40 === 0) {
-          console.log(`\n🚦 Fetched ${caseCount} cases. Taking a 5-minute break...\n`);
+          cycleCount++; // Increment cycle count
+          console.log(`\n🚦 Completed cycle ${cycleCount}. Taking a 5-minute break...\n`);
           await sleep(5 * 60 * 1000); // 5 minutes cooldown
         }
       } catch (e) {
