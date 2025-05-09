@@ -151,41 +151,30 @@ async function fetchAndStorePrices() {
     let attempts = 0;
     let priceFetched = false;
 
-    // Check if we've hit the max requests for this cycle
-    if (requestCount >= MAX_REQUESTS_PER_CYCLE) {
-      console.log(`\n🚦 Hit ${MAX_REQUESTS_PER_CYCLE} requests. Cooling down for 3 minutes...\n`);
-      await sleep(COOLDOWN_AFTER_MAX_REQUESTS_MS);
-      requestCount = 0;
-    }
-
     while (attempts < MAX_RETRIES && !priceFetched) {
       const url = API_URL + encodeURIComponent(caseName);
       try {
         const res = await axios.get(url);
         const priceStr = res.data.lowest_price || "$0.00";
-        const price = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
+        const newPrice = parseFloat(priceStr.replace(/[^0-9.]/g, ""));
         const timestamp = now.toISOString();
-        const previousPriceResult = await pool.query("SELECT price FROM price_history WHERE case_name = $1 AND timestamp <= NOW() - INTERVAL '1 hour' ORDER BY timestamp DESC LIMIT 1", [caseName]);
+
+        // Fetch the previous price from the database
+        const previousPriceResult = await pool.query('SELECT price FROM prices WHERE case_name = $1', [caseName]);
         const previousPrice = previousPriceResult.rows.length > 0 ? previousPriceResult.rows[0].price : null;
 
-        // Calculate percent change
-        let percentChange = null;
-        if (previousPrice !== null && previousPrice !== 0) {
-          percentChange = ((price - previousPrice) / previousPrice) * 100;
-        }
         // Save to DB immediately
         const client = await pool.connect();
         try {
           await client.query('BEGIN');
-          // Remove any existing price for this case
           await client.query('DELETE FROM prices WHERE case_name = $1', [caseName]);
           await client.query(
             'INSERT INTO prices (case_name, price, timestamp) VALUES ($1, $2, $3)',
-            [caseName, price, timestamp]
+            [caseName, newPrice, timestamp]
           );
           await client.query(
             'INSERT INTO price_history (case_name, price, timestamp) VALUES ($1, $2, $3)',
-            [caseName, price, timestamp]
+            [caseName, newPrice, timestamp]
           );
           await client.query('COMMIT');
         } catch (error) {
@@ -194,17 +183,30 @@ async function fetchAndStorePrices() {
         } finally {
           client.release();
         }
-        // Emit per-case update
-        io.emit('price-updated', { caseName, price, timestamp, percentChange: percentChange !== null ? parseFloat(percentChange.toFixed(2)) : null });
-        console.log(`Fetched: ${caseName} — $${price.toFixed(2)}`);
+
+        // Calculate percentage change if previous price exists
+        let percentChange = null;
+        if (previousPrice !== null) {
+          percentChange = ((newPrice - previousPrice) / previousPrice) * 100;
+        }
+
+        // Emit per-case update with price and percent change
+        io.emit('price-updated', { caseName, price: newPrice, timestamp, percentChange });
+        console.log(`Fetched: ${caseName} — $${newPrice.toFixed(2)} (Change: ${percentChange ? percentChange.toFixed(2) + '%' : 'N/A'})`);
+        
         priceFetched = true;
         caseCount++;
         requestCount++;
 
-        // Add cooldown after every 40 cases fetched
+        // Check if 20 cases have been fetched
+        if (caseCount % 20 === 0) {
+          console.log(`\n🚦 Fetched ${caseCount} cases. Taking a 30-second break...\n`);
+          await sleep(30000); // 30 seconds cooldown
+        }
+        // Check if 40 cases have been fetched
         if (caseCount % 40 === 0) {
-          console.log(`\n🚦 Fetched ${caseCount} cases. Cooling down for 60 seconds...\n`);
-          await sleep(60000); // 60 seconds cooldown
+          console.log(`\n🚦 Fetched ${caseCount} cases. Taking a 5-minute break...\n`);
+          await sleep(5 * 60 * 1000); // 5 minutes cooldown
         }
       } catch (e) {
         if (e.response && e.response.status === 429) {
@@ -224,13 +226,7 @@ async function fetchAndStorePrices() {
         }
     }
 
-    }
-
-    if (!priceFetched) {
-      console.error(`Failed to fetch ${caseName} after ${MAX_RETRIES} attempts.`);
-    }
-
-    await sleep(randomDelayMs());
+    await sleep(randomDelayMs()); // Random delay between requests
   }
 
   io.emit('prices-updated', { timestamp: new Date().toISOString() });
