@@ -202,7 +202,7 @@ async function fetchAndStorePrices() {
         // Check if 40cases have been fetched
         if (caseCount % 40=== 0) {
           console.log(`\n🚦 Fetched ${caseCount} cases. Taking a 60-second break...\n`);
-          await sleep(6000); // 60seconds cooldown
+          await sleep(60000); // 60seconds cooldown
         }
 
         // Check if 40 cases have been fetched (1 cycle)
