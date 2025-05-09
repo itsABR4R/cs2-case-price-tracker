@@ -224,6 +224,7 @@ async function fetchAndStorePrices() {
             console.warn(`Max retries reached for ${caseName}. Cooling down for 3 minutes...`);
             await sleep(COOLDOWN_AFTER_MAX_RETRIES); // Cooldown after max retries
         }
+      }
     }
 
     await sleep(randomDelayMs()); // Random delay between requests
