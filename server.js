@@ -240,6 +240,7 @@ async function fetchAndStorePrices() {
   io.emit('prices-updated', { timestamp: new Date().toISOString() });
   console.log("\n✨ Successfully completed fetching all case prices!");
   console.log(`📊 Total cases processed: ${caseCount}`);
+  console.log(`📊 Total cycles completed: ${cycleCount}`);
 }
 
 // --- End fetchPrices logic ---
